@@ -1,0 +1,276 @@
+using Newtonsoft.Json.Linq;
+using Newtonsoft.Json;
+using System.Text;
+using System.IO;
+
+public class JsonToEntity
+{
+    public TableId EntityId;
+    public str JsonData;
+    public List BlacklistFields;
+
+    public void new()
+    {
+        BlacklistFields=new List(Types::String);
+        BlacklistFields.addEnd("RecId");
+        BlacklistFields.addEnd("TableId");
+        BlacklistFields.addEnd("Partition");
+        BlacklistFields.addEnd("RecVersion");
+        BlacklistFields.addEnd("SequenceNum");
+        BlacklistFields.addEnd("DataAreaId");
+        BlacklistFields.addEnd("RowNumber");
+    }
+
+    public Common GetRecord()
+    {
+        DictDataEntity entityIns;
+        Common record;
+        entityIns=new DictDataEntity(EntityId);
+        DictDataEntityField fieldIns;
+        int fieldNumber=0;
+        if(entityIns)
+        {
+            JObject jsonObj=JObject::Parse(JsonData);
+            
+            record=entityIns.makeRecord();
+            fieldNumber=entityIns.fieldNext(fieldNumber);
+            while(fieldNumber)
+            {
+                fieldIns=entityIns.fieldObject(fieldNumber);
+                if(this._IsInList(fieldIns.name(),BlacklistFields))
+                {
+                    fieldNumber=entityIns.fieldNext(fieldNumber);
+                    continue;
+                }
+                if(fieldIns)
+                {
+                    str fieldType= enum2Str(fieldIns.baseType());
+                    str value=this._GetFirstValue(fieldIns.name(),JsonData);
+                    if(value!=null)
+                    {
+                        //switch(fieldType)
+                        //{
+                        //    case "String":
+                        //        record.(fieldIns.id())=value;
+                        //        break;
+                        //    case "Enum":
+                        //        DictEnum dictEnumIns=new DictEnum(fieldIns.enumId());
+                        //        for(int i=0;i<dictEnumIns.values();i++)
+                        //        {
+                        //            str valueOfEnum=dictEnumIns.index2Symbol(i);
+                        //            if(valueOfEnum==value)
+                        //            {
+                        //                record.(fieldIns.id())=dictEnumIns.index2Value(i);
+                        //                break;
+                        //            }
+                        //        }
+                        //        break;
+                        //    case "Integer":
+                        //        record.(fieldIns.id())=str2Int(value);
+                        //        break;
+                        //    case "Int64":
+                        //        record.(fieldIns.id())=str2Int64(value);
+                        //        break;
+                        //    case "UtcDateTime":
+                        //        record.(fieldIns.id())=str2Datetime(value,213);
+                        //        break;
+                        //    case "Real":
+                        //        record.(fieldIns.id())=str2Num(value);
+                        //        break;
+                        //    case "Guid":
+                        //        record.(fieldIns.id())=str2Guid(value);
+                        //        break;
+                        //    case "Date":
+                        //        record.(fieldIns.id())=str2Date(value,213);
+                        //        break;
+                        //    default:
+                        //        info(FieldType);
+                        //        break;
+                        //}
+                        record=this._SetValueToRecord(record,value,fieldIns);
+                    }
+                }
+                fieldNumber=entityIns.fieldNext(fieldNumber);
+            }
+        }
+        return record;
+    }
+
+    public List GetRecords()
+    {
+        DictDataEntity entityIns;
+        Common record;
+        entityIns=new DictDataEntity(EntityId);
+        List records=new List(typeName2Type("Common"));
+        DictDataEntityField fieldIns;
+        int fieldNumber=0;
+        info("!!!!");
+        //List jsonParts=this._GetJsonChild(entityIns.publicEntityName());
+        List jsonParts=this._GetJsonChild("SalesOrderLine");
+
+        ListIterator iteratorObj=new ListIterator(jsonParts);
+        while(iteratorObj.more())
+        {
+            if(entityIns)
+            {
+                record=entityIns.makeRecord();
+                fieldNumber=entityIns.fieldNext(fieldNumber);
+                while(fieldNumber)
+                {
+                    fieldIns=entityIns.fieldObject(fieldNumber);
+                    if(this._IsInList(fieldIns.name(),BlacklistFields))
+                    {
+                        fieldNumber=entityIns.fieldNext(fieldNumber);
+                        continue;
+                    }
+                    if(fieldIns)
+                    {
+                        str fieldType= enum2Str(fieldIns.baseType());
+                        str value=this._GetFirstValue(fieldIns.name(),iteratorObj.value());
+                        if(value!=null)
+                        {
+                            record=this._SetValueToRecord(record,value,fieldIns);
+                        }
+                    }
+                    fieldNumber=entityIns.fieldNext(fieldNumber);
+                }
+                records.addEnd(record);
+            }
+            iteratorObj.next();
+        }
+        return records;
+    }
+
+    private List _GetJsonChild(str _parentPropertyname)
+    {
+        List jsonChildStrList=new List(Types::String);
+        JObject jsonObj=JObject::Parse(JsonData);
+        JsonReader reader=jsonObj.CreateReader();
+        while(reader.Read())
+        {
+            if(reader.TokenType.ToString().Equals("PropertyName"))
+            {
+                if(strLwr(reader.Value.ToString()) == strLwr(_parentPropertyname))
+                {
+                    reader.Read(); //Consume StartArray
+                    reader.Read(); //Approach inside Array
+                    //perform to write json
+                    StringBuilder stringBuilderObj=new StringBuilder();
+                    StringWriter stringWriterObj = new StringWriter(stringBuilderObj);
+                    JsonWriter writer=new JsonTextWriter(stringWriterObj);
+                    writer.Formatting=Formatting::Indented;
+                    writer.WriteStartObject();
+                    do
+                    {
+                        if(reader.TokenType.ToString()=="StartObject") //Consume StartObject if any
+                        {
+                            stringBuilderObj=new StringBuilder();
+                            stringWriterObj = new StringWriter(stringBuilderObj);
+                            writer=new JsonTextWriter(stringWriterObj);
+                            writer.Formatting=Formatting::Indented;
+                            writer.WriteStartObject();
+                            continue;
+                        }
+                        if(reader.TokenType.ToString()=="EndObject")
+                        {
+                            writer.WriteEndObject();
+                            jsonChildStrList.addEnd(stringBuilderObj.ToString());
+                            continue;
+                        }
+                        if(reader.TokenType.ToString()=="EndArray")
+                        {
+                            break;
+                        }
+                        if(reader.TokenType.ToString()=="PropertyName")
+                        {
+                            writer.WritePropertyName(reader.Value);
+                            continue;
+                        }
+                        writer.WriteValue(reader.Value);
+                    }
+                    while(reader.Read());
+                    break;
+                }
+            }
+        }
+        return jsonChildStrList;
+    }
+
+    private Common _SetValueToRecord(Common _record, str _value,DictDataEntityField _fieldIns)
+    {
+        str fieldType=enum2Str(_fieldIns.baseType());
+        switch(fieldType)
+        {
+            case "String":
+                _record.(_fieldIns.id())=_value;
+                break;
+            case "Enum":
+                DictEnum dictEnumIns=new DictEnum(_fieldIns.enumId());
+                for(int i=0;i<dictEnumIns.values();i++)
+                {
+                    str valueOfEnum=dictEnumIns.index2Symbol(i);
+                    if(valueOfEnum==_value)
+                    {
+                        _record.(_fieldIns.id())=dictEnumIns.index2Value(i);
+                        break;
+                    }
+                }
+                break;
+            case "Integer":
+                _record.(_fieldIns.id())=str2Int(_value);
+                break;
+            case "Int64":
+                _record.(_fieldIns.id())=str2Int64(_value);
+                break;
+            case "UtcDateTime":
+                _record.(_fieldIns.id())=str2Datetime(_value,213);
+                break;
+            case "Real":
+                _record.(_fieldIns.id())=str2Num(_value);
+                break;
+            case "Guid":
+                _record.(_fieldIns.id())=str2Guid(_value);
+                break;
+            case "Date":
+                _record.(_fieldIns.id())=str2Date(_value,213);
+                break;
+            default:
+                info(fieldType);
+                break;
+        }
+        return _record;
+    }
+
+    private str _GetFirstValue(str _propertyName, str _json)
+    {
+        JObject jsonObj=JObject::Parse(_json);
+        JsonReader reader=jsonObj.CreateReader();
+        while(reader.Read())
+        {
+            if(reader.TokenType.ToString().Equals("PropertyName"))
+            {
+                if(strLwr(reader.Value.ToString()) == strLwr(_propertyName))
+                {
+                    reader.Read();
+                    return reader.Value!=null?reader.Value.ToString():null;
+                }
+            }
+        }
+        return null;
+    }
+
+    private boolean _IsInList(str _fieldName,List _list)
+    {
+        ListIterator listIteratorObj=new ListIterator(_list);
+        while(listIteratorObj.more())
+        {
+            if(listIteratorObj.value()==_fieldName)
+            {
+                return true;
+            }
+            listIteratorObj.next();
+        }
+        return false;
+    }
+
+}

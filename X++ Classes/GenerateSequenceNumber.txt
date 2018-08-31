@@ -1,0 +1,25 @@
+public class GenerateSequenceNumber
+{
+    public static Num GetNextNumber(TableId _entityId,str _fieldName)
+    {
+        DictDataEntity entityIns=new DictDataEntity(_entityId);
+        DictDataEntityField fieldIns;
+        int fieldNumber=0;
+        NumberSeq seq;
+        if(entityIns)
+        {
+            do
+            {
+                fieldNumber=entityIns.fieldNext(fieldNumber);
+                fieldIns=entityIns.fieldObject(fieldNumber);
+                if(strLwr(fieldIns.name())==strLwr(_fieldName))
+                {
+                    seq=NumberSeq::newGetNum(NumberSeqReference::findReference(extendedTypeName2Id(fieldIns.dataField())));
+                    return seq.num();
+                }
+            }
+            while(fieldNumber);
+        }
+        return "-1";
+    }
+}

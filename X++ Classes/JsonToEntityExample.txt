@@ -1,0 +1,35 @@
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+
+public class JsonToEntityExample
+{
+    public static void main(Args _args)
+    {
+        System.Xml.XmlDocument xml=new System.Xml.XmlDocument();
+        xml.LoadXml("<?xml version='1.0' encoding='UTF-8'?><SalesOrderHeader><ArePricesIncludingSalesTax>No</ArePricesIncludingSalesTax><BankConstantSymbol /><CFPSCode /><CampaignId /><CashDiscountCode /><ChargeCustomerGroupId /><CommissionCustomerGroupId /><CommissionSalesRepresentativeGroupId /><ConfirmedReceiptDate>1900-01-01T12:00:00Z</ConfirmedReceiptDate><ConfirmedShippingDate>1900-01-01T12:00:00Z</ConfirmedShippingDate><ContactPersonId /><CreditNoteReasonCode /><CurrencyCode>USD</CurrencyCode><CustomerPaymentFinancialInterestCode /><CustomerPaymentFineCode /><CustomerPaymentMethodName /><CustomerPaymentMethodSpecificationName /><CustomerPostingProfileId>GEN</CustomerPostingProfileId><CustomerRequisitionNumber /><CustomerTransactionSettlementType>None</CustomerTransactionSettlementType><CustomersOrderReference /><DefaultLedgerDimensionDisplayValue /><DefaultShippingSiteId /><DefaultShippingWarehouseId /><DeliveryAddressCity>Berlin</DeliveryAddressCity><DeliveryAddressCountryRegionISOCode>DE</DeliveryAddressCountryRegionISOCode><DeliveryAddressCountryRegionId>DEU</DeliveryAddressCountryRegionId><DeliveryAddressCountyId /><DeliveryAddressDescription>Contoso Europe</DeliveryAddressDescription><DeliveryAddressDistrictName /><DeliveryAddressDunsNumber /><DeliveryAddressLatitude>0</DeliveryAddressLatitude><DeliveryAddressLocationId>000001199</DeliveryAddressLocationId><DeliveryAddressLongitude>0</DeliveryAddressLongitude><DeliveryAddressName>Contoso Europe</DeliveryAddressName><DeliveryAddressPostBox /><DeliveryAddressStateId>BE</DeliveryAddressStateId><DeliveryAddressStreet>Bahnhofstrasse 5</DeliveryAddressStreet><DeliveryAddressStreetNumber /><DeliveryAddressTimeZone/><DeliveryAddressZipCode>10115</DeliveryAddressZipCode><DeliveryBuildingCompliment /><DeliveryModeCode /><DeliveryReasonCode /><DeliveryTermsCode>FOB</DeliveryTermsCode><DirectDebitMandateId /><EInvoiceDimensionAccountCode /><EUSalesListCode>IncludeNot</EUSalesListCode><Email>lamle@dicentral.com</Email><ExportReason /><FiscalDocumentOperationTypeId /><FiscalDocumentTypeId /><FiscalOperationPresenceType>DoesNotApply</FiscalOperationPresenceType><FixedDueDate>1900-01-01T12:00:00Z</FixedDueDate><FixedExchangeRate>0</FixedExchangeRate><IntrastatPortId /><IntrastatStatisticsProcedureCode /><IntrastatTransactionCode /><IntrastatTransportModeCode /><InventoryReservationMethod>None</InventoryReservationMethod><InvoiceAddressTimeZone/><InvoiceCustomerAccountNumber>DE-001</InvoiceCustomerAccountNumber><InvoicePaymentAttachmentType>None</InvoicePaymentAttachmentType><InvoiceType>Invoice</InvoiceType><IsConsolidatedInvoiceTarget>No</IsConsolidatedInvoiceTarget><IsDeliveryAddressOrderSpecific>No</IsDeliveryAddressOrderSpecific><IsDeliveryAddressPrivate>No</IsDeliveryAddressPrivate><IsEInvoiceDimensionAccountCodeSpecifiedPerLine>No</IsEInvoiceDimensionAccountCodeSpecifiedPerLine><IsEntryCertificateRequired>No</IsEntryCertificateRequired><IsExportSale>No</IsExportSale><IsFinalUser>No</IsFinalUser><IsOneTimeCustomer>No</IsOneTimeCustomer><IsOwnEntryCertificateIssued>No</IsOwnEntryCertificateIssued><IsSalesProcessingStopped>No</IsSalesProcessingStopped><IsServiceDeliveryAddressBased>No</IsServiceDeliveryAddressBased><LanguageId>en-us</LanguageId><LineDiscountCustomerGroupCode /><MultilineDiscountCustomerGroupCode /><NumberSequenceGroupId /><OrderResponsiblePersonnelNumber /><OrderTakerPersonnelNumber /><OrderingCustomerAccountNumber>DE-001</OrderingCustomerAccountNumber><PaymentScheduleName /><PaymentTermsBaseDate>1900-01-01T12:00:00Z</PaymentTermsBaseDate><PaymentTermsName>Net10</PaymentTermsName><PriceCustomerGroupCode>09</PriceCustomerGroupCode><QuotationNumber /><RequestedReceiptDate>2018-05-15T12:00:00Z</RequestedReceiptDate><RequestedShippingDate>2018-05-15T12:00:00Z</RequestedShippingDate><SalesOrderName>Contoso Europe</SalesOrderName><SalesOrderOriginCode /><SalesOrderPoolId /><SalesOrderPromisingMethod>None</SalesOrderPromisingMethod><SalesRebateCustomerGroupId /><SalesTaxGroupCode>EXMPT FOR</SalesTaxGroupCode><SalesUnitId /><ServiceFiscalInformationCode /><ShippingCarrierId /><ShippingCarrierServiceGroupId /><ShippingCarrierServiceId /><TMACustomerGroupId /><TaxExemptNumber>998765</TaxExemptNumber><TotalDiscountCustomerGroupCode /><TotalDiscountPercentage>0</TotalDiscountPercentage><TransportationBrokerId /><TransportationModeId /><TransportationRoutePlanId /><TransportationTemplateId /><URL /><WillAutomaticInventoryReservationConsiderBatchAttributes>No</WillAutomaticInventoryReservationConsiderBatchAttributes><dataAreaId>USMF</dataAreaId></SalesOrderHeader>");
+        str json=JsonConvert::SerializeXmlNode(xml);
+        System.IO.StreamReader sr=new System.IO.StreamReader("C:\\dddd\\json.txt");
+        json=sr.ReadToEnd();
+        sr.Close();
+        SalesOrderHeaderEntity headerEntity;
+        JsonToEntity j2e=new JsonToEntity();
+        j2e.JsonData=json;
+        j2e.EntityId=tableNum(SalesOrderHeaderEntity);
+        headerEntity=j2e.GetRecord();
+        headerEntity.SalesOrderNumber=GenerateSequenceNumber::GetNextNumber(tableNum(SalesOrderHeaderEntity),"SalesOrderNumber");
+        headerEntity.insert();
+
+        j2e.EntityId=tableNum(SalesOrderLineEntity);
+        List lineList;
+        lineList=j2e.GetRecords();
+        ListIterator listIteratorObj=new ListIterator(lineList);
+        while(listIteratorObj.more())
+        {
+            SalesOrderLineEntity lineEntity;
+            lineEntity=listIteratorObj.value();
+            lineEntity.SalesOrderNumber=headerEntity.SalesOrderNumber;
+            lineEntity.insert();
+            listIteratorObj.next();
+        }
+    }
+}
